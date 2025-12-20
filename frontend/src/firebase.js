@@ -15,13 +15,13 @@ import { getFirestore } from "firebase/firestore";
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBDmdBaM743x-wzC0I3RDIMNjlLwnqWgs8",
-  authDomain: "songsync-a671a.firebaseapp.com",
-  projectId: "songsync-a671a",
-  storageBucket: "songsync-a671a.firebasestorage.app",
-  messagingSenderId: "426419132614",
-  appId: "1:426419132614:web:dab879897a2f042c199fc7",
-  measurementId: "G-GDWS4SSSDT"
+  apiKey: "AIzaSyD5xdMOXiR_lNermGb8nDYpgq7x_g2M4Mg",
+  authDomain: "songsyncerv1.firebaseapp.com",
+  projectId: "songsyncerv1",
+  storageBucket: "songsyncerv1.firebasestorage.app",
+  messagingSenderId: "1097401805594",
+  appId: "1:1097401805594:web:db9baf4f66368969355aa3",
+  measurementId: "G-Z7MR9386QN"
 };
 
 // Initialize Firebase
