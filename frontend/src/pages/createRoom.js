@@ -386,7 +386,7 @@ const CreateRoom = () => {
       }
     }
 
-    if (e.data === 2 || e.data === 0 || e.data === 5) { // Paused, Ended, or Cued
+    if (e.data === 2 || e.data === 0 ||) { // Paused, Ended, or Cued
       if (timeIntervalRef.current) {
         clearInterval(timeIntervalRef.current)
         timeIntervalRef.current = null
@@ -401,7 +401,7 @@ const CreateRoom = () => {
     }
 
     // When video ends, play next song
-    if (e.data == 0) {
+    if (e.data == 0 && isLeader) {
       console.log("Video ended, moving to next song")
       socket.emit("next_song", state.roomCode)
     }
