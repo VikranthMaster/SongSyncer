@@ -386,7 +386,7 @@ const CreateRoom = () => {
       }
     }
 
-    if (e.data === 2 || e.data === 0 ||) { // Paused, Ended, or Cued
+    if (e.data === 2 || e.data === 0) { // Paused, Ended, or Cued
       if (timeIntervalRef.current) {
         clearInterval(timeIntervalRef.current)
         timeIntervalRef.current = null
