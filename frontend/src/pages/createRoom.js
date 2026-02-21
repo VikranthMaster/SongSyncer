@@ -401,7 +401,7 @@ const CreateRoom = () => {
     }
 
     // When video ends, play next song
-    if (e.data == 0 && isLeader) {
+    if (e.data === 0 && isLeader) {
       console.log("Video ended, moving to next song")
       socket.emit("next_song", state.roomCode)
     }
