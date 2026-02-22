@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { socket } from "../socket"
 import { doc, getDoc, deleteDoc } from "firebase/firestore"
 import { db } from "./../firebase"
@@ -30,7 +30,7 @@ const CreateRoom = () => {
   const playerRef = useRef(null)
   const loadedVideoRef = useRef(null)
   const syncAppliedRef = useRef(false)
-  const hasJoinedRef = useRef(false) // Prevent double join
+  const hasJoinedRef = useRef(false) 
 
   const API_KEY = process.env.REACT_APP_YT_API_KEY
   function handlePlayerReady() {
@@ -60,7 +60,7 @@ const CreateRoom = () => {
         setCurrentSong(info)
       }
     })
-  }, [videoId])
+  }, [videoId, fetchVideoInfo])
 
   useEffect(() => {
     if (!queue.length) {
@@ -73,9 +73,9 @@ const CreateRoom = () => {
     Promise.all(nextSongs.map((id) => fetchVideoInfo(id))).then((results) => {
       setQueueInfo(results.filter(Boolean))
     })
-  }, [queue])
+  }, [queue, fetchVideoInfo])
 
-  // Join room - only once
+  // Join room  only once
   useEffect(() => {
     if (!state?.roomCode || !state?.name || hasJoinedRef.current) return
 
@@ -96,7 +96,6 @@ const CreateRoom = () => {
 
     run()
 
-    // Cleanup on unmount
     return () => {
       hasJoinedRef.current = false
     }
@@ -222,7 +221,7 @@ const CreateRoom = () => {
         return
       }
 
-      // If video changed, load it
+      // If video changed load it
       if (sync.video && loadedVideoRef.current !== sync.video) {
         console.log("Sync: Loading video", sync.video)
         loadedVideoRef.current = sync.video
@@ -296,13 +295,12 @@ const CreateRoom = () => {
       loadPlayer()
     }
 
-    // Cleanup
     return () => {
       if (timeIntervalRef.current) {
         clearInterval(timeIntervalRef.current)
       }
     }
-  }, [])
+  }, [loadPlayer])
 
   useEffect(() => {
     const fetchLeader = async () => {
@@ -416,7 +414,7 @@ const CreateRoom = () => {
     socket.emit("toggle_play", state.roomCode)
   }
 
-  async function fetchVideoInfo(videoId) {
+  const fetchVideoInfo = useCallback(async (videoId) => {
     if (!videoId) return null
     try {
       const response = await fetch(
@@ -435,11 +433,11 @@ const CreateRoom = () => {
       console.error("Error fetching video info:", err)
       return null
     }
-  }
+  }, [API_KEY])
 
-  const loadPlayer = () => {
+  const loadPlayer = useCallback(() => {
     if (playerRef.current) return
-
+  
     playerRef.current = new window.YT.Player("yt-player", {
       height: "1",
       width: "1",
@@ -449,7 +447,7 @@ const CreateRoom = () => {
         onStateChange: onPlayerStateChange,
       },
     })
-  }
+  }, [])
 
   const searchVideo = async () => {
     if (!query.trim()) return
