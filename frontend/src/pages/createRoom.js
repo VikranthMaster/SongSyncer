@@ -124,11 +124,11 @@ const CreateRoom = () => {
     socket.emit("toggle_play", state.roomCode)
   }
 
-  const fetchVideoInfo = useCallback(async (videoId) => {
+  async function fetchVideoInfo(videoId) {
     if (!videoId) return null
     try {
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`,
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`
       )
       const data = await response.json()
       if (data.items && data.items.length > 0) {
@@ -143,9 +143,9 @@ const CreateRoom = () => {
       console.error("Error fetching video info:", err)
       return null
     }
-  }, [API_KEY])
+  }
 
-  const loadPlayer = useCallback(() => {
+  function loadPlayer() {
     if (playerRef.current) return
   
     playerRef.current = new window.YT.Player("yt-player", {
@@ -157,8 +157,7 @@ const CreateRoom = () => {
         onStateChange: onPlayerStateChange,
       },
     })
-  }, [])
-
+  }
   const searchVideo = async () => {
     if (!query.trim()) return
 
