@@ -433,7 +433,7 @@ const CreateRoom = () => {
       console.error("Error fetching video info:", err)
       return null
     }
-  })
+  }
 
   const loadPlayer = () => {
     if (playerRef.current) return
