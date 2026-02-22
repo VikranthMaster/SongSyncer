@@ -60,7 +60,7 @@ const CreateRoom = () => {
         setCurrentSong(info)
       }
     })
-  }, [videoId, fetchVideoInfo])
+  }, [videoId])
 
   useEffect(() => {
     if (!queue.length) {
@@ -73,7 +73,7 @@ const CreateRoom = () => {
     Promise.all(nextSongs.map((id) => fetchVideoInfo(id))).then((results) => {
       setQueueInfo(results.filter(Boolean))
     })
-  }, [queue, fetchVideoInfo])
+  }, [queue])
 
   // Join room  only once
   useEffect(() => {
@@ -300,7 +300,7 @@ const CreateRoom = () => {
         clearInterval(timeIntervalRef.current)
       }
     }
-  }, [loadPlayer])
+  }, [])
 
   useEffect(() => {
     const fetchLeader = async () => {
@@ -414,7 +414,7 @@ const CreateRoom = () => {
     socket.emit("toggle_play", state.roomCode)
   }
 
-  const fetchVideoInfo = useCallback(async (videoId) => {
+  async function fetchVideoInfo(videoId) {
     if (!videoId) return null
     try {
       const response = await fetch(
@@ -433,9 +433,9 @@ const CreateRoom = () => {
       console.error("Error fetching video info:", err)
       return null
     }
-  }, [API_KEY])
+  })
 
-  const loadPlayer = useCallback(() => {
+  const loadPlayer = () => {
     if (playerRef.current) return
   
     playerRef.current = new window.YT.Player("yt-player", {
@@ -447,7 +447,7 @@ const CreateRoom = () => {
         onStateChange: onPlayerStateChange,
       },
     })
-  }, [])
+  }
 
   const searchVideo = async () => {
     if (!query.trim()) return
