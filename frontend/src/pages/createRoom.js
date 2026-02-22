@@ -33,6 +33,161 @@ const CreateRoom = () => {
   const hasJoinedRef = useRef(false) 
 
   const API_KEY = process.env.REACT_APP_YT_API_KEY
+
+  async function checkLeader(code, user) {
+    try {
+      const docRef = doc(db, "rooms", String(code))
+      const docSnap = await getDoc(docRef)
+
+      if (!docSnap.exists()) return false
+
+      return user === docSnap.data().leader
+    } catch (err) {
+      console.error("Error checking leader:", err)
+      return false
+    }
+  }
+
+  async function deleteRoom() {
+    try {
+      const roomRef = doc(db, "rooms", String(state.roomCode))
+      await deleteDoc(roomRef)
+      console.log("Room deleted")
+      socket.emit("end_room", state.roomCode)
+      navigate("/")
+    } catch (err) {
+      console.error("Failed to delete room:", err)
+      alert("Failed to delete room")
+    }
+  }
+
+  async function getLeader(code) {
+    try {
+      const docRef = doc(db, "rooms", String(code))
+      const docSnap = await getDoc(docRef)
+      if (!docSnap.exists()) return ""
+      return docSnap.data().leader || ""
+    } catch (err) {
+      console.error("Error getting leader:", err)
+      return ""
+    }
+  }
+
+  const handlePlayerDuration = (event) => {
+    const duration = event.target.getDuration()
+    setDuration(duration)
+  }
+
+  const onPlayerStateChange = (e) => {
+    console.log(e.data);
+    if (e.data === 1 && duration === 0) {
+      handlePlayerDuration(e)
+    }
+
+    if (e.data === 1 || e.data === 3) { 
+      if (!timeIntervalRef.current) {
+        timeIntervalRef.current = setInterval(() => {
+          if (!isSeekingRef.current && playerRef.current) {
+            setCurrentTime(playerRef.current.getCurrentTime())
+          }
+        }, 300)
+      }
+    }
+
+    if (e.data === 2 || e.data === 0) { // Paused, Ended, or Cued
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current)
+        timeIntervalRef.current = null
+      }
+    }
+
+    if (e.data === 2) {
+      setIsPlaying(false)
+    }
+    if (e.data === 1) {
+      setIsPlaying(true)
+    }
+
+    // When video ends, play next song
+    if (e.data === 0 && isLeader) {
+      console.log("Video ended, moving to next song")
+      socket.emit("next_song", state.roomCode)
+    }
+  }
+
+  const nextButton = () => {
+    socket.emit("next_song", state.roomCode)
+  }
+
+  const togglePlayPause = () => {
+    if (!playerRef.current) return
+    socket.emit("toggle_play", state.roomCode)
+  }
+
+  const fetchVideoInfo = useCallback(async (videoId) => {
+    if (!videoId) return null
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`,
+      )
+      const data = await response.json()
+      if (data.items && data.items.length > 0) {
+        const snippet = data.items[0].snippet
+        return {
+          title: snippet.title,
+          thumbnail: snippet.thumbnails.high.url,
+        }
+      }
+      return null
+    } catch (err) {
+      console.error("Error fetching video info:", err)
+      return null
+    }
+  }, [API_KEY])
+
+  const loadPlayer = useCallback(() => {
+    if (playerRef.current) return
+  
+    playerRef.current = new window.YT.Player("yt-player", {
+      height: "1",
+      width: "1",
+      playerVars: { autoplay: 0, controls: 0 },
+      events: {
+        onReady: handlePlayerReady,
+        onStateChange: onPlayerStateChange,
+      },
+    })
+  }, [])
+
+  const searchVideo = async () => {
+    if (!query.trim()) return
+
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(
+        query,
+      )}&key=${API_KEY}`
+
+      const res = await fetch(url)
+      const data = await res.json()
+
+      if (data.items && data.items.length > 0) {
+        setResults(data.items)
+      } else {
+        setResults([])
+        alert("No results found")
+      }
+    } catch (err) {
+      console.error("Error searching videos:", err)
+      alert("Failed to search videos")
+    }
+  }
+
+  const chooseVideo = (id) => {
+    socket.emit("add_to_queue", { code: state.roomCode, id: id })
+    setResults([])
+    setQuery("")
+  }
+
   function handlePlayerReady() {
     console.log("Player ready!")
     setPlayerReady(true)
@@ -60,7 +215,7 @@ const CreateRoom = () => {
         setCurrentSong(info)
       }
     })
-  }, [videoId])
+  }, [videoId, fetchVideoInfo])
 
   useEffect(() => {
     if (!queue.length) {
@@ -73,7 +228,7 @@ const CreateRoom = () => {
     Promise.all(nextSongs.map((id) => fetchVideoInfo(id))).then((results) => {
       setQueueInfo(results.filter(Boolean))
     })
-  }, [queue])
+  }, [queue, fetchVideoInfo])
 
   // Join room  only once
   useEffect(() => {
@@ -300,7 +455,7 @@ const CreateRoom = () => {
         clearInterval(timeIntervalRef.current)
       }
     }
-  }, [])
+  }, [loadPlayer])
 
   useEffect(() => {
     const fetchLeader = async () => {
@@ -323,160 +478,6 @@ const CreateRoom = () => {
       socket.off("members_update", handleMembers)
     }
   }, [])
-
-  async function checkLeader(code, user) {
-    try {
-      const docRef = doc(db, "rooms", String(code))
-      const docSnap = await getDoc(docRef)
-
-      if (!docSnap.exists()) return false
-
-      return user === docSnap.data().leader
-    } catch (err) {
-      console.error("Error checking leader:", err)
-      return false
-    }
-  }
-
-  async function deleteRoom() {
-    try {
-      const roomRef = doc(db, "rooms", String(state.roomCode))
-      await deleteDoc(roomRef)
-      console.log("Room deleted")
-      socket.emit("end_room", state.roomCode)
-      navigate("/")
-    } catch (err) {
-      console.error("Failed to delete room:", err)
-      alert("Failed to delete room")
-    }
-  }
-
-  async function getLeader(code) {
-    try {
-      const docRef = doc(db, "rooms", String(code))
-      const docSnap = await getDoc(docRef)
-      if (!docSnap.exists()) return ""
-      return docSnap.data().leader || ""
-    } catch (err) {
-      console.error("Error getting leader:", err)
-      return ""
-    }
-  }
-
-  const handlePlayerDuration = (event) => {
-    const duration = event.target.getDuration()
-    setDuration(duration)
-  }
-
-  const onPlayerStateChange = (e) => {
-    console.log(e.data);
-    if (e.data === 1 && duration === 0) {
-      handlePlayerDuration(e)
-    }
-
-    if (e.data === 1 || e.data === 3) { 
-      if (!timeIntervalRef.current) {
-        timeIntervalRef.current = setInterval(() => {
-          if (!isSeekingRef.current && playerRef.current) {
-            setCurrentTime(playerRef.current.getCurrentTime())
-          }
-        }, 300)
-      }
-    }
-
-    if (e.data === 2 || e.data === 0) { // Paused, Ended, or Cued
-      if (timeIntervalRef.current) {
-        clearInterval(timeIntervalRef.current)
-        timeIntervalRef.current = null
-      }
-    }
-
-    if (e.data === 2) {
-      setIsPlaying(false)
-    }
-    if (e.data === 1) {
-      setIsPlaying(true)
-    }
-
-    // When video ends, play next song
-    if (e.data === 0 && isLeader) {
-      console.log("Video ended, moving to next song")
-      socket.emit("next_song", state.roomCode)
-    }
-  }
-
-  const nextButton = () => {
-    socket.emit("next_song", state.roomCode)
-  }
-
-  const togglePlayPause = () => {
-    if (!playerRef.current) return
-    socket.emit("toggle_play", state.roomCode)
-  }
-
-  async function fetchVideoInfo(videoId) {
-    if (!videoId) return null
-    try {
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`,
-      )
-      const data = await response.json()
-      if (data.items && data.items.length > 0) {
-        const snippet = data.items[0].snippet
-        return {
-          title: snippet.title,
-          thumbnail: snippet.thumbnails.high.url,
-        }
-      }
-      return null
-    } catch (err) {
-      console.error("Error fetching video info:", err)
-      return null
-    }
-  }
-
-  const loadPlayer = () => {
-    if (playerRef.current) return
-  
-    playerRef.current = new window.YT.Player("yt-player", {
-      height: "1",
-      width: "1",
-      playerVars: { autoplay: 0, controls: 0 },
-      events: {
-        onReady: handlePlayerReady,
-        onStateChange: onPlayerStateChange,
-      },
-    })
-  }
-
-  const searchVideo = async () => {
-    if (!query.trim()) return
-
-    try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&q=${encodeURIComponent(
-        query,
-      )}&key=${API_KEY}`
-
-      const res = await fetch(url)
-      const data = await res.json()
-
-      if (data.items && data.items.length > 0) {
-        setResults(data.items)
-      } else {
-        setResults([])
-        alert("No results found")
-      }
-    } catch (err) {
-      console.error("Error searching videos:", err)
-      alert("Failed to search videos")
-    }
-  }
-
-  const chooseVideo = (id) => {
-    socket.emit("add_to_queue", { code: state.roomCode, id: id })
-    setResults([])
-    setQuery("")
-  }
 
   return (
     <div className="create-main">
