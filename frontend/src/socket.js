@@ -1,5 +1,5 @@
 import { io } from "socket.io-client";
 
-export const socket = io("https://c07c-117-206-233-245.ngrok-free.app", {
+export const socket = io("https://leading-engineering-cells-experience.trycloudflare.com", {
   transports: ["websocket"],
 });
